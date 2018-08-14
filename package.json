@@ -4,7 +4,7 @@
   "description": "В этом репозитории находятся материалы тестового задания по JavaScript для [14-й Школы разработки интерфейсов](https://academy.yandex.ru/events/frontend/shri_msk-2018-2) (осень 2018, Москва, Санкт-Петербург, Симферополь).",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/yandex-shri-2018/entrance-task-3-2/issues"
   },
-  "homepage": "https://github.com/yandex-shri-2018/entrance-task-3-2#readme"
+  "homepage": "https://github.com/yandex-shri-2018/entrance-task-3-2#readme",
+  "devDependencies": {
+    "jest": "^23.5.0"
+  },
+  "dependencies": {}
 }
