@@ -5,34 +5,53 @@ class Schedule {
     constructor({ devices, maxPower, rates }) {
         this.schedule = {};
         this.consumedEnergy = { value: 0, devices: {} };
-        this.hourlyRates = this.getHourlyRates(rates);
-        
+        const hourlyRates = this.getHourlyRates(rates);
+
         devices.forEach(device => {
             device.possibleStartTime = [];
-            
+
             for (let hour = 0; hour <= 24 - device.duration; hour++) {
-                if (this.isTimeUnsuitableForDevice(hour, device)) {
+                if (this.isTimeNonSuitableForDevice(hour, device.mode)) {
                     continue;
                 }
-                const price = this.getDeviceRunPrice(this.hourlyRates, device, hour);
-                device.possibleStartTime.push({ starttime: hour, price })
+                const price = this.getDeviceRunPrice(hourlyRates, device, hour);
+                device.possibleStartTime.push({ startTime: hour, price });
             }
 
-            device.possibleStartTime.sort((a, b) => a.price - b.price)
+            device.possibleStartTime.sort((a, b) => {
+                const byPrice = a.price - b.price;
+                const byTime = a.startTime - b.startTime;
+                if (byPrice == 0){
+                    return byTime;
+                }
+                return byPrice;
+            });
         });
 
-        devices.sort((a, b) => a.possibleStartTime.length - b.possibleStartTime.length)
+        devices.sort((a, b) => a.possibleStartTime.length - b.possibleStartTime.length);
+
+        devices.forEach(device => {
+            const startTime = device.possibleStartTime[0].startTime;
+
+            for (let hour = startTime; hour < device.duration + startTime; hour++) {
+                if (hour in this.schedule) {
+                    this.schedule[hour].push(device.id);
+                } else {
+                    this.schedule[hour] = [device.id];
+                }
+            }
+        });
     }
-    
-    isTimeUnsuitableForDevice(time, device) {
-        if (device.mode == "day" && (time < 7 || time >= 21)) {
+
+    isTimeNonSuitableForDevice(time, mode) {
+        if (mode == "day" && (time < 7 || time >= 21)) {
             return true;
         }
-    
-        if (device.mode == "night" && time >= 7 && time < 21) {
+
+        if (mode == "night" && time >= 7 && time < 21) {
             return true;
         }
-    
+
         return false;
     }
 
@@ -43,7 +62,7 @@ class Schedule {
                 for (let hour = rate.from; hour < 24; hour++) {
                     hourlyRates[hour] = rate.value;
                 }
-    
+
                 for (let hour = 0; hour < rate.to; hour++) {
                     hourlyRates[hour] = rate.value;
                 }
