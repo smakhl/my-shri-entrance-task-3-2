@@ -5,23 +5,25 @@ class Schedule {
     constructor({ devices, maxPower, rates }) {
         this.schedule = {};
         this.consumedEnergy = { value: 0, devices: {} };
-        const hourlyRates = this.getHourlyRates(rates);
+        this._hourlyRates = [];
+
+
+        rates.forEach(r => this.addRate(r));
 
         devices.forEach(device => {
             device.possibleStartTime = [];
 
             for (let hour = 0; hour <= 24 - device.duration; hour++) {
-                if (this.isTimeNonSuitableForDevice(hour, device.mode)) {
-                    continue;
+                if (this._isTimeOkForDeviceMode(hour, device.mode)) {
+                    const price = this.getDeviceRunPrice(this._hourlyRates, device, hour);
+                    device.possibleStartTime.push({ startTime: hour, price });
                 }
-                const price = this.getDeviceRunPrice(hourlyRates, device, hour);
-                device.possibleStartTime.push({ startTime: hour, price });
             }
 
             device.possibleStartTime.sort((a, b) => {
                 const byPrice = a.price - b.price;
                 const byTime = a.startTime - b.startTime;
-                if (byPrice == 0){
+                if (byPrice == 0) {
                     return byTime;
                 }
                 return byPrice;
@@ -43,16 +45,48 @@ class Schedule {
         });
     }
 
-    isTimeNonSuitableForDevice(time, mode) {
+    makeSchedule(devices, maxPower, hourlyRates) {
+
+    }
+
+    addRate({ from, to, value }) {
+        if (!arguments[0].hasOwnProperty("from") || !arguments[0].hasOwnProperty("to") || !arguments[0].hasOwnProperty("value")) {
+            throw "Mandatory parameter is missing";
+        }
+
+        if (from < 0 || to > 23)
+            throw "Illegal time";
+
+        if (from > to) {
+            for (let hour = from; hour < 24; hour++) {
+                this._hourlyRates[hour] = value;
+            }
+
+            for (let hour = 0; hour < to; hour++) {
+                this._hourlyRates[hour] = value;
+            }
+        }
+        else {
+            for (let hour = from; hour < to; hour++) {
+                this._hourlyRates[hour] = value;
+            }
+        }
+    }
+
+    addDevice() {
+
+    }
+
+    _isTimeOkForDeviceMode(time, mode) {
         if (mode == "day" && (time < 7 || time >= 21)) {
-            return true;
+            return false;
         }
 
         if (mode == "night" && time >= 7 && time < 21) {
-            return true;
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     getHourlyRates(rates) {
