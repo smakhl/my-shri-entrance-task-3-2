@@ -25,6 +25,12 @@ class Schedule {
     }
 
     _makeSchedule() {
+        for (let hour = 0; hour < 24; hour++) {
+            if (!this._hourlyRates[hour]){
+                throw "The rates are missing or incomplete";
+            }            
+        }        
+
         this._devices.sort((a, b) => a.possibleStartTimes.length - b.possibleStartTimes.length);
         this._devices.forEach(device => {
             device.possibleStartTimes.sort((a, b) => {
