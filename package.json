@@ -19,5 +19,7 @@
   "devDependencies": {
     "jest": "^23.5.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "js-combinatorics": "^0.5.3"
+  }
 }
