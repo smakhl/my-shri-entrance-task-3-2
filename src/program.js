@@ -5,18 +5,26 @@ class Schedule {
     constructor({ devices, maxPower, rates }) {
         this._hourlyRates = [];
         this._devices = [];
-        this._maxPower = maxPower;
-        
-        rates.forEach(rate => this.setRate(rate));
-        devices.forEach(device => this.setDevice(device));
-        
-        const result = this._makeSchedule();
-        this.schedule = result.schedule;
-        this.consumedEnergy = result.consumedEnergy;
-        
+        this._maxPower = 0;
+
+        this._setMaxPower(maxPower);
+        rates.forEach(rate => this._setRate(rate));
+        devices.forEach(device => this._setDevice(device));
+
+        this._runAlgorithm();
     }
 
-    _makeSchedule() {
+    addDevice(device) {
+        this._setDevice(device);
+        this._runAlgorithm();
+    }
+
+    addRate(rate) {
+        this._setRate(rate);
+        this._runAlgorithm();
+    }
+
+    _runAlgorithm() {
         for (let hour = 0; hour < 24; hour++) {
             if (!this._hourlyRates[hour]) {
                 throw "The rates are missing or incomplete";
@@ -26,35 +34,42 @@ class Schedule {
         this._devices.sort(this._byCountOfPossibleStartTimes);
         this._devices.forEach(device => device.possibleStartTimes.sort(this._byPriceThenByTime));
 
-        let allPossibleStartTimes = this._devices.map(d => d.possibleStartTimes);
-        let combinedStartTimesCheapestFirst = Combinatorics.cartesianProduct(...allPossibleStartTimes)
+        const allPossibleStartTimes = this._devices.map(d => d.possibleStartTimes);
+        const combinedStartTimesCheapestFirst = Combinatorics.cartesianProduct(...allPossibleStartTimes)
 
         while (true) {
-            const bestStartTimesCandidate = combinedStartTimesCheapestFirst.next();
-            if (!bestStartTimesCandidate) {
+            const nextBestStartTimesCandidate = combinedStartTimesCheapestFirst.next();
+            if (!nextBestStartTimesCandidate) {
                 throw "Failed to create the schedule"
             }
 
-            const schedule = this.createSchedule(bestStartTimesCandidate);
+            const schedule = this._createSchedule(nextBestStartTimesCandidate);
             if (!schedule) {
                 continue;
             }
 
-            const consumedEnergy = { value: 0, devices: {} };
-            for (const key in bestStartTimesCandidate) {
-                if (bestStartTimesCandidate.hasOwnProperty(key)) {
-                    const deviceRun = bestStartTimesCandidate[key];
-                    consumedEnergy.devices[deviceRun.device.id] = deviceRun.price;
-                    consumedEnergy.value += deviceRun.price;
-                }
-            }
-            consumedEnergy.value = Math.round(consumedEnergy.value * 10000) / 10000
-
-            return { schedule, consumedEnergy };
+            const consumedEnergy = this._calculateConsumedEnergy(nextBestStartTimesCandidate);
+            
+            this.schedule = schedule;
+            this.consumedEnergy = consumedEnergy;
+            return;
         }
     }
 
-    createSchedule(scheduleCandidate) {
+    _calculateConsumedEnergy(startTimeCandidate) {
+        const consumedEnergy = { value: 0, devices: {} };
+        for (const key in startTimeCandidate) {
+            if (startTimeCandidate.hasOwnProperty(key)) {
+                const deviceRun = startTimeCandidate[key];
+                consumedEnergy.devices[deviceRun.device.id] = deviceRun.price;
+                consumedEnergy.value += deviceRun.price;
+            }
+        }
+        consumedEnergy.value = Math.round(consumedEnergy.value * 10000) / 10000;
+        return consumedEnergy;
+    }
+
+    _createSchedule(scheduleCandidate) {
         const schedule = {};
         for (let hour = 0; hour < 24; hour++) {
             schedule[hour] = [];
@@ -79,9 +94,13 @@ class Schedule {
         return schedule;
     }
 
-    setRate(rate) {
+    _setRate(rate) {
         if (!rate.from || !rate.to || !rate.value) {
             throw "Failed to add rate. Mandatory parameter is missing. " + rate;
+        }
+
+        if (isNaN(rate.from) || isNaN(rate.to) || isNaN(rate.value)) {
+            throw "Failed to add rate. Illegal paraeter. " + rate;
         }
 
         if (rate.from < 0 || rate.to > 23)
@@ -94,13 +113,34 @@ class Schedule {
         }
     }
 
-    setDevice(device) {
-        if (this._devices.findIndex(d => d === device) !== -1) {
-            throw `The device is already added: ${device.name}`;
+    _setMaxPower(maxPower) {
+        if (!maxPower || isNaN(maxPower)){
+            throw "Failed to set maxPower " + maxPower;
+        }
+
+        this._maxPower = maxPower;
+    }
+
+    _setDevice(device) {
+        if (!device.id || !device.power || !device.duration || !device.name) {
+            throw "Could not add device. Mandatory parameter missing. " + device;
+        }
+
+        if (device.mode && (device.mode != "day" && device.mode != "night")) {
+            throw "Could not add device. Illegal mode: " + device;
+        }
+
+        if (isNaN(device.power) || isNaN(device.duration) || device.duration > 24) {
+            throw "Could not add device. Illegal parameter. " + device;
         }
 
         if (device.power > this._maxPower) {
-            throw `The device ${device.name} exceeds the power limit of ${this._maxPower}`;
+            throw `Could not add device. The device ${device.name} exceeds the power limit of ${this._maxPower}`;
+        }
+
+        const existingDeviceIndex = this._devices.findIndex(d => d === device);
+        if (existingDeviceIndex !== -1) {
+            this._devices.splice(existingDeviceIndex, 1);
         }
 
         device.possibleStartTimes = [];
@@ -175,5 +215,5 @@ class Schedule {
 
 
 const schedule = new Schedule({ devices, maxPower, rates })
-
+schedule.addDevice({ id: "id", power: 300, duration: 2, name: "test device", mode: "day" })
 module.exports = Schedule;
