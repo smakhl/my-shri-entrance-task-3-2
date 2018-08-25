@@ -1,4 +1,3 @@
-const { devices, maxPower, rates } = require("../data/input.json")
 var Combinatorics = require('js-combinatorics');
 
 class Schedule {
@@ -19,9 +18,12 @@ class Schedule {
         this._runAlgorithm();
     }
 
-    addRate(rate) {
-        this._setRate(rate);
-        this._runAlgorithm();
+    removeDevice(deviceId) {
+        const index = this._devices.findIndex(d => d.id == deviceId);
+        if (index >= 0) {
+            this._devices.splice(index, 1);
+            this._runAlgorithm();
+        }
     }
 
     _runAlgorithm() {
@@ -29,6 +31,10 @@ class Schedule {
             if (!this._hourlyRates[hour]) {
                 throw "The rates are missing or incomplete";
             }
+        }
+
+        if (this._devices.length == 0) {
+            return null;
         }
 
         this._devices.sort(this._byCountOfPossibleStartTimes);
@@ -49,7 +55,7 @@ class Schedule {
             }
 
             const consumedEnergy = this._calculateConsumedEnergy(nextBestStartTimesCandidate);
-            
+
             this.schedule = schedule;
             this.consumedEnergy = consumedEnergy;
             return;
@@ -114,7 +120,7 @@ class Schedule {
     }
 
     _setMaxPower(maxPower) {
-        if (!maxPower || isNaN(maxPower)){
+        if (!maxPower || isNaN(maxPower)) {
             throw "Failed to set maxPower " + maxPower;
         }
 
@@ -213,7 +219,4 @@ class Schedule {
     }
 }
 
-
-const schedule = new Schedule({ devices, maxPower, rates })
-schedule.addDevice({ id: "id", power: 300, duration: 2, name: "test device", mode: "day" })
 module.exports = Schedule;
